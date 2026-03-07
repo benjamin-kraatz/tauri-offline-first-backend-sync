@@ -16,8 +16,10 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@journeyapps/wa-sqlite": "^1.5.0",
     "@neondatabase/serverless": "^1.0.2",
     "@offline-first-backend-sync/env": "workspace:*",
+    "@powersync/web": "^1.35.0",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "zod": "catalog:"

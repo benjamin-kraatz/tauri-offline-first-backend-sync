@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "alchemy dev",
+    "dev:all": "alchemy dev",
+    "dev": "alchemy dev ./alchemy.server.run.ts",
     "deploy": "alchemy deploy",
     "destroy": "alchemy destroy"
   },
