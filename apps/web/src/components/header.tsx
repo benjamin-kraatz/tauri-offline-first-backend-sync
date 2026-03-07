@@ -1,5 +1,7 @@
+import { Badge } from "@offline-first-backend-sync/ui/components/badge";
 import { Link } from "@tanstack/react-router";
 
+import { useAllUsersQuery } from "@/lib/tdb";
 import { ModeToggle } from "./mode-toggle";
 import UserMenu from "./user-menu";
 
@@ -23,6 +25,7 @@ export default function Header() {
           })}
         </nav>
         <div className="flex items-center gap-2">
+          <AllUsersCountBadge />
           <ModeToggle />
           <UserMenu />
         </div>
@@ -30,4 +33,11 @@ export default function Header() {
       <hr />
     </div>
   );
+}
+
+function AllUsersCountBadge() {
+  const { data: allUsers } = useAllUsersQuery();
+  const allUsersCount = allUsers?.length ?? 0;
+
+  return <Badge variant="outline">{allUsersCount}</Badge>;
 }
