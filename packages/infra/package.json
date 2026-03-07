@@ -1,0 +1,19 @@
+{
+  "name": "@offline-first-backend-sync/infra",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "alchemy dev",
+    "deploy": "alchemy deploy",
+    "destroy": "alchemy destroy"
+  },
+  "dependencies": {
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@offline-first-backend-sync/config": "workspace:*",
+    "alchemy": "catalog:",
+    "typescript": "^5"
+  }
+}

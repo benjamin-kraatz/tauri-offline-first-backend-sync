@@ -1,0 +1,62 @@
+{
+  "name": "offline-first-backend-sync",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "dotenv": "^17.2.2",
+      "zod": "^4.1.13",
+      "@types/node": "^22.13.14",
+      "@cloudflare/workers-types": "^4.20251213.0",
+      "hono": "^4.8.2",
+      "@orpc/server": "^1.12.2",
+      "@orpc/openapi": "^1.12.2",
+      "@orpc/zod": "^1.12.2",
+      "better-auth": "1.5.2",
+      "alchemy": "^0.82.1",
+      "lucide-react": "^0.546.0",
+      "next-themes": "^0.4.6",
+      "react": "^19.2.3",
+      "react-dom": "^19.2.3",
+      "sonner": "^2.0.5",
+      "@orpc/client": "^1.12.2",
+      "@types/react": "^19.2.10",
+      "@types/react-dom": "^19.2.3",
+      "tailwindcss": "^4.1.18"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:web": "turbo -F web dev",
+    "dev:server": "turbo -F server dev",
+    "db:push": "turbo -F @offline-first-backend-sync/db db:push",
+    "db:studio": "turbo -F @offline-first-backend-sync/db db:studio",
+    "db:generate": "turbo -F @offline-first-backend-sync/db db:generate",
+    "db:migrate": "turbo -F @offline-first-backend-sync/db db:migrate",
+    "deploy": "turbo -F @offline-first-backend-sync/infra deploy",
+    "destroy": "turbo -F @offline-first-backend-sync/infra destroy",
+    "check": "oxlint && oxfmt --write"
+  },
+  "dependencies": {
+    "@offline-first-backend-sync/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@offline-first-backend-sync/config": "workspace:*",
+    "@types/node": "catalog:",
+    "lefthook": "^2.0.13",
+    "oxfmt": "^0.26.0",
+    "oxlint": "^1.41.0",
+    "turbo": "^2.8.12",
+    "typescript": "^5"
+  },
+  "packageManager": "bun@1.3.9"
+}

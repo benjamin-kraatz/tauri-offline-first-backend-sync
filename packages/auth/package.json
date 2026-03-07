@@ -1,0 +1,24 @@
+{
+  "name": "@offline-first-backend-sync/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@offline-first-backend-sync/db": "workspace:*",
+    "@offline-first-backend-sync/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@offline-first-backend-sync/config": "workspace:*",
+    "typescript": "^5"
+  }
+}

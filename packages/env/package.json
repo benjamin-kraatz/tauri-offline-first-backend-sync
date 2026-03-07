@@ -1,0 +1,21 @@
+{
+  "name": "@offline-first-backend-sync/env",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./src/server.ts",
+    "./web": "./src/web.ts"
+  },
+  "dependencies": {
+    "@t3-oss/env-core": "^0.13.1",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@offline-first-backend-sync/config": "workspace:*",
+    "@offline-first-backend-sync/infra": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "^5"
+  }
+}
