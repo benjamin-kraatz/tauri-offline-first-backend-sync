@@ -5,6 +5,7 @@ import {
   PowerSyncDatabase,
   Schema,
   Table,
+  UpdateType,
   type PowerSyncBackendConnector,
   type PowerSyncCredentials,
 } from "@powersync/web";
@@ -61,17 +62,28 @@ export class PowerSyncConnector implements PowerSyncBackendConnector {
     if (!transaction) return;
 
     for (const op of transaction.crud) {
-      const opData = op.opData as SQLiteUser;
-      const record = { ...opData, id: op.id };
+      if (op.op === UpdateType.PUT || op.op === UpdateType.PATCH) {
+        console.log(`> [${op.op}] `, op);
+        const opData = op.opData as SQLiteUser;
+        const record = { ...opData, id: op.id };
 
-      await client.pub__powersyncInsert({
-        name: record.name,
-        email: record.email,
-        emailVerified: record.email_verified,
-        image: record.image,
-        createdAt: record.created_at,
-        updatedAt: record.updated_at,
-      });
+        const payload = {
+          id: op.id,
+          name: record.name,
+          email: record.email,
+          emailVerified: record.email_verified,
+          image: record.image,
+          createdAt: record.created_at,
+          updatedAt: record.updated_at,
+        };
+        console.log(">> ", payload);
+        await client.pub__powersyncUpsert(payload);
+      } else if (op.op === UpdateType.DELETE) {
+        console.log("> [DELETE] ", op);
+        await client.pub__powersyncDelete({
+          id: op.id,
+        });
+      }
     }
 
     await transaction.complete();
