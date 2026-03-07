@@ -49,13 +49,20 @@ function HomeComponent() {
   const handleInsert = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newName || !newEmail) return;
-    await insertUser({ name: newName, email: newEmail, emailVerified: "0", image: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    await insertUser({
+      name: newName,
+      email: newEmail,
+      email_verified: 0,
+      image: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
     setNewName("");
     setNewEmail("");
   };
 
   const handleUpdateSave = async (id: string) => {
-    await updateUser(id, { name: editName, updatedAt: new Date().toISOString() });
+    await updateUser(id, { name: editName, updated_at: new Date().toISOString() });
     setEditingId(null);
   };
 

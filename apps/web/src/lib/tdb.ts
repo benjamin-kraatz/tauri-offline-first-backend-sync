@@ -9,17 +9,7 @@ export const usersCollection = createCollection(
     table: AppSchema.props.user,
     schema: userSchema,
     onDeserializationError: (error) => {
-      // Present fatal error
       console.error("[TDB] Error deserializing user: ", error);
-    },
-    // Optional: custom column serialization
-    serializer: {
-      // Dates are serialized by default, this is just an example
-      createdAt: (value) => (value ? value.toISOString() : null),
-      updatedAt: (value) => (value ? value.toISOString() : null),
     },
   }),
 );
-
-export type UserCollectionInput = typeof userSchema;
-export type UserCollectionOutput = UserCollectionInput;
