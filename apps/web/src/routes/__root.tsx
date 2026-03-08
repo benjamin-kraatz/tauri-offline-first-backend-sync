@@ -2,10 +2,11 @@ import type { AppRouterClient } from "@offline-first-backend-sync/api/routers/in
 import { Toaster } from "@offline-first-backend-sync/ui/components/sonner";
 import { createORPCClient } from "@orpc/client";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
+import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
 import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { useState } from "react";
 
 import Header from "@/components/header";
@@ -59,8 +60,18 @@ function RootComponent() {
         </div>
         <Toaster richColors />
       </ThemeProvider>
-      <TanStackRouterDevtools position="bottom-left" />
-      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+      <TanStackDevtools
+        plugins={[
+          {
+            name: "TanStack Query",
+            render: <ReactQueryDevtoolsPanel />,
+          },
+          {
+            name: "TanStack Router",
+            render: <TanStackRouterDevtoolsPanel />,
+          },
+        ]}
+      />
     </>
   );
 }

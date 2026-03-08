@@ -1,9 +1,9 @@
 import type { RouterClient } from "@orpc/server";
 
-import { db, user } from "@offline-first-backend-sync/db";
+import { db, todo, user } from "@offline-first-backend-sync/db";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure } from "../index";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, or } from "drizzle-orm";
 
 export const userUpsertSchema = z.object({
   // ID is always required
@@ -80,6 +80,110 @@ export const appRouter = {
     .handler(async ({ input }) => {
       return db.delete(user).where(eq(user.id, input.id)).returning();
     }),
+
+  /** RxDB replication pull: fetch todos after checkpoint, ordered by updatedAt, id */
+  pub__todosPull: publicProcedure
+    .input(
+      z.object({
+        checkpoint: z
+          .object({ id: z.string(), updatedAt: z.number() })
+          .nullish(),
+        limit: z.number().default(50),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const cp = input.checkpoint;
+      const rows = await db
+        .select()
+        .from(todo)
+        .where(
+          cp
+            ? or(
+                gt(todo.updatedAt, new Date(cp.updatedAt)),
+                and(
+                  eq(todo.updatedAt, new Date(cp.updatedAt)),
+                  gt(todo.id, cp.id),
+                ),
+              )
+            : undefined,
+        )
+        .orderBy(todo.updatedAt, todo.id)
+        .limit(input.limit);
+
+      const documents = rows.map((r) => ({
+        id: r.id,
+        text: r.text,
+        completed: r.completed,
+        deleted: r.deleted,
+        updatedAt: r.updatedAt.getTime(),
+      }));
+
+      const last = documents.at(-1);
+      const checkpoint = last != null ? { id: last.id, updatedAt: last.updatedAt } : cp ?? null;
+
+      return { documents, checkpoint };
+    }),
+
+  /** RxDB replication push: apply client writes, return conflicts */
+  pub__todosPush: publicProcedure
+    .input(
+      z.object({
+        docs: z.array(
+          z.object({
+            assumedMasterState: z.record(z.string(), z.unknown()).nullish(),
+            newDocumentState: z.object({
+              id: z.string(),
+              text: z.string(),
+              completed: z.boolean(),
+              deleted: z.boolean(),
+              updatedAt: z.number(),
+            }),
+          }),
+        ),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const conflicts: Record<string, unknown>[] = [];
+
+      for (const { assumedMasterState, newDocumentState } of input.docs) {
+        const existing = await db.select().from(todo).where(eq(todo.id, newDocumentState.id)).limit(1);
+
+        const masterUpdatedAt =
+          assumedMasterState?.updatedAt != null ? Number(assumedMasterState.updatedAt) : null;
+        const actualUpdatedAt = existing[0]?.updatedAt?.getTime() ?? null;
+
+        if (masterUpdatedAt !== actualUpdatedAt && existing.length > 0) {
+          conflicts.push({
+            id: existing[0]!.id,
+            text: existing[0]!.text,
+            completed: existing[0]!.completed,
+            deleted: existing[0]!.deleted,
+            updatedAt: existing[0]!.updatedAt.getTime(),
+          });
+          continue;
+        }
+
+        const now = new Date();
+        const row = {
+          id: newDocumentState.id,
+          text: newDocumentState.text,
+          completed: newDocumentState.completed,
+          deleted: newDocumentState.deleted,
+          updatedAt: now,
+        };
+
+        if (newDocumentState.deleted) {
+          await db.delete(todo).where(eq(todo.id, newDocumentState.id));
+        } else if (existing.length === 0) {
+          await db.insert(todo).values(row);
+        } else {
+          await db.update(todo).set(row).where(eq(todo.id, newDocumentState.id));
+        }
+      }
+
+      return conflicts;
+    }),
+
   powersyncGet: protectedProcedure.handler(async () => {
     // No PowerSync here, as this is the server side
     return db.select().from(user);

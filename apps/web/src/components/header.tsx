@@ -1,6 +1,7 @@
 import { Badge } from "@offline-first-backend-sync/ui/components/badge";
 import { Link } from "@tanstack/react-router";
 
+import { useTodosReplicationState } from "@/lib/rxdb";
 import { useAllUsersQuery } from "@/lib/tdb";
 import { ModeToggle } from "./mode-toggle";
 import UserMenu from "./user-menu";
@@ -10,6 +11,7 @@ export default function Header() {
     { to: "/", label: "Home" },
     { to: "/dashboard", label: "Dashboard" },
     { to: "/tdb", label: "With Tanstack DB" },
+    { to: "/rxdb-playground", label: "RxDB Playground" },
   ] as const;
 
   return (
@@ -25,6 +27,7 @@ export default function Header() {
           })}
         </nav>
         <div className="flex items-center gap-2">
+          <TodosSyncBadge />
           <AllUsersCountBadge />
           <ModeToggle />
           <UserMenu />
@@ -33,6 +36,17 @@ export default function Header() {
       <hr />
     </div>
   );
+}
+
+function TodosSyncBadge() {
+  const { active, error } = useTodosReplicationState();
+  if (error) {
+    return <Badge variant="destructive">Todos: sync error</Badge>;
+  }
+  if (active) {
+    return <Badge variant="secondary">Todos: syncing…</Badge>;
+  }
+  return <Badge variant="outline">Todos: in sync</Badge>;
 }
 
 function AllUsersCountBadge() {

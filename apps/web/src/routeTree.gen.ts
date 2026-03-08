@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TdbRouteImport } from './routes/tdb'
+import { Route as RxdbPlaygroundRouteImport } from './routes/rxdb-playground'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TdbRoute = TdbRouteImport.update({
   id: '/tdb',
   path: '/tdb',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RxdbPlaygroundRoute = RxdbPlaygroundRouteImport.update({
+  id: '/rxdb-playground',
+  path: '/rxdb-playground',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/rxdb-playground': typeof RxdbPlaygroundRoute
   '/tdb': typeof TdbRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/rxdb-playground': typeof RxdbPlaygroundRoute
   '/tdb': typeof TdbRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/rxdb-playground': typeof RxdbPlaygroundRoute
   '/tdb': typeof TdbRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/tdb'
+  fullPaths: '/' | '/dashboard' | '/login' | '/rxdb-playground' | '/tdb'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/tdb'
-  id: '__root__' | '/' | '/dashboard' | '/login' | '/tdb'
+  to: '/' | '/dashboard' | '/login' | '/rxdb-playground' | '/tdb'
+  id: '__root__' | '/' | '/dashboard' | '/login' | '/rxdb-playground' | '/tdb'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  RxdbPlaygroundRoute: typeof RxdbPlaygroundRoute
   TdbRoute: typeof TdbRoute
 }
 
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/tdb'
       fullPath: '/tdb'
       preLoaderRoute: typeof TdbRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rxdb-playground': {
+      id: '/rxdb-playground'
+      path: '/rxdb-playground'
+      fullPath: '/rxdb-playground'
+      preLoaderRoute: typeof RxdbPlaygroundRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  RxdbPlaygroundRoute: RxdbPlaygroundRoute,
   TdbRoute: TdbRoute,
 }
 export const routeTree = rootRouteImport
