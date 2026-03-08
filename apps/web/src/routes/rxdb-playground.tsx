@@ -4,12 +4,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@offline-first-backend-sync/ui/components/button";
 import { Input } from "@offline-first-backend-sync/ui/components/input";
 
-import {
-  patchTodo,
-  todosCollection,
-  useAllTodosQuery,
-  useTodosReplicationState,
-} from "@/lib/rxdb";
+import { patchTodo, todosCollection, useAllTodosQuery, useTodosReplicationState } from "@/lib/rxdb";
+import { todosV2Collection, useAllTodosV2Query } from "@/lib/rxdb-v2";
 
 export const Route = createFileRoute("/rxdb-playground")({
   component: RxdbPlaygroundComponent,
@@ -28,6 +24,8 @@ function RxdbPlaygroundComponent() {
       <SyncStatus />
 
       <TodosPanel />
+
+      <TodosV2Panel />
     </div>
   );
 }
@@ -75,7 +73,13 @@ function TodosPanel() {
     await patchTodo(id, { removed: true });
   };
 
-  type TodoItem = { id: string; text: string; completed?: boolean; updatedAt: number; removed?: boolean };
+  type TodoItem = {
+    id: string;
+    text: string;
+    completed?: boolean;
+    updatedAt: number;
+    removed?: boolean;
+  };
   const visibleTodos = ((todos ?? []) as TodoItem[]).filter((t) => !t.removed);
 
   return (
@@ -83,6 +87,87 @@ function TodosPanel() {
       <h2 className="mb-3 font-medium">Todos</h2>
       <p className="mb-4 text-muted-foreground text-xs">
         Reactive via useLiveQuery — updates automatically when data changes.
+      </p>
+      <form onSubmit={addTodo} className="mb-4 flex gap-2">
+        <Input
+          placeholder="New todo…"
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          className="flex-1"
+        />
+        <Button type="submit" size="sm">
+          Add
+        </Button>
+      </form>
+      <ul className="space-y-2">
+        {visibleTodos.map((t) => (
+          <li key={String(t.id)} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={t.completed ?? false}
+              onChange={() => toggleTodo(String(t.id), !t.completed)}
+              className="h-4 w-4"
+            />
+            <span className={t.completed ? "text-muted-foreground line-through" : ""}>
+              {String(t.text)}
+            </span>
+            <Button variant="ghost" size="sm" onClick={() => removeTodo(String(t.id))}>
+              Delete
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {visibleTodos.length === 0 && (
+        <p className="text-muted-foreground text-sm">No todos. Add one above.</p>
+      )}
+    </section>
+  );
+}
+
+function TodosV2Panel() {
+  const { data: todos } = useAllTodosV2Query();
+  const [newText, setNewText] = useState("");
+
+  const addTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newText.trim()) return;
+    const id = crypto.randomUUID();
+    todosV2Collection.insert({
+      id,
+      text: newText.trim(),
+      completed: false,
+      updatedAt: Date.now(),
+    });
+    setNewText("");
+  };
+
+  const toggleTodo = async (id: string, completed: boolean) => {
+    todosV2Collection.update(id, (draft) => {
+      draft.completed = completed;
+    });
+  };
+
+  const removeTodo = async (id: string) => {
+    todosV2Collection.update(id, (draft) => {
+      draft.removed = true;
+    });
+  };
+
+  type TodoItem = {
+    id: string;
+    text: string;
+    completed?: boolean;
+    updatedAt: number;
+    removed?: boolean;
+  };
+  const visibleTodos = ((todos ?? []) as TodoItem[]).filter((t) => !t.removed);
+
+  return (
+    <section className="rounded-lg border p-4">
+      <h2 className="mb-3 font-medium">Todos v2</h2>
+      <p className="mb-4 text-muted-foreground text-xs">
+        Reactive via TanStack DB + RxDB from the ground up - updates automatically when data
+        changes.
       </p>
       <form onSubmit={addTodo} className="mb-4 flex gap-2">
         <Input
