@@ -3,6 +3,7 @@ const TAURI_TRUSTED_ORIGINS = [
   "http://tauri.localhost",
   "tauri://localhost",
   "https://tauri-local-first-sync-web-benn.sebbenkra.workers.dev",
+  "http://127.0.0.1:3001",
 ] as const;
 
 function splitOrigins(value: string | undefined): string[] {
