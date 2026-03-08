@@ -52,6 +52,22 @@ The API is running at [http://localhost:3000](http://localhost:3000).
 
 If you are exploring the TanStack DB + RxDB setup in this repository, start with [docs/README.md](./docs/README.md).
 
+## Tauri SQLite Note
+
+This project currently vendors `tauri-plugin-sql` at `apps/web/src-tauri/vendor/tauri-plugin-sql` and points Cargo at that local copy from `apps/web/src-tauri/Cargo.toml`.
+
+Why:
+
+- The native Tauri RxDB SQLite path depends on transaction-safe `BEGIN` / `COMMIT` behavior.
+- Upstream `tauri-plugin-sql` used a pooled SQLite connection model that caused RxDB transaction-close failures in this app.
+- The local patch forces SQLite to `max_connections(1)` so RxDB's Tauri adapter can operate correctly.
+
+What to know:
+
+- Commit the vendored crate to version control. Other developers and CI need it because the Rust dependency now resolves via a local path.
+- If upstream `tauri-plugin-sql` lands a proper fix, this vendor can be removed and `Cargo.toml` can be switched back to the registry dependency.
+- The vendored crate README documents the exact patch and the removal condition.
+
 ## UI Customization
 
 React web apps in this stack share shadcn/ui primitives through `packages/ui`.

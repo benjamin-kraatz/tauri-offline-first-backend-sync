@@ -85,9 +85,7 @@ export const appRouter = {
   pub__todosPull: publicProcedure
     .input(
       z.object({
-        checkpoint: z
-          .object({ id: z.string(), updatedAt: z.number() })
-          .nullish(),
+        checkpoint: z.object({ id: z.string(), updatedAt: z.number() }).nullish(),
         limit: z.number().default(50),
       }),
     )
@@ -100,10 +98,7 @@ export const appRouter = {
           cp
             ? or(
                 gt(todo.updatedAt, new Date(cp.updatedAt)),
-                and(
-                  eq(todo.updatedAt, new Date(cp.updatedAt)),
-                  gt(todo.id, cp.id),
-                ),
+                and(eq(todo.updatedAt, new Date(cp.updatedAt)), gt(todo.id, cp.id)),
               )
             : undefined,
         )
@@ -119,9 +114,130 @@ export const appRouter = {
       }));
 
       const last = documents.at(-1);
-      const checkpoint = last != null ? { id: last.id, updatedAt: last.updatedAt } : cp ?? null;
+      const checkpoint = last != null ? { id: last.id, updatedAt: last.updatedAt } : (cp ?? null);
 
       return { documents, checkpoint };
+    }),
+
+  pub__todosV2Pull: publicProcedure
+    .input(
+      z.object({
+        checkpoint: z.object({ id: z.string(), updatedAt: z.number() }).nullish(),
+        limit: z.number().default(50),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const cp = input.checkpoint;
+      const rows = await db
+        .select()
+        .from(todo)
+        .where(
+          cp
+            ? or(
+                gt(todo.updatedAt, new Date(cp.updatedAt)),
+                and(eq(todo.updatedAt, new Date(cp.updatedAt)), gt(todo.id, cp.id)),
+              )
+            : undefined,
+        )
+        .orderBy(todo.updatedAt, todo.id)
+        .limit(input.limit);
+
+      const documents = rows.map((r) => ({
+        id: r.id,
+        text: r.text,
+        completed: r.completed,
+        deleted: r.deleted,
+        updatedAt: r.updatedAt.getTime(),
+        flapFap: true,
+      }));
+
+      const last = documents.at(-1);
+      const checkpoint = last != null ? { id: last.id, updatedAt: last.updatedAt } : (cp ?? null);
+
+      return { documents, checkpoint };
+    }),
+  pub__todosV2Push: publicProcedure
+    .input(
+      z.object({
+        docs: z.array(
+          z.object({
+            assumedMasterState: z.record(z.string(), z.unknown()).nullish(),
+            newDocumentState: z.object({
+              id: z.string(),
+              text: z.string(),
+              completed: z.boolean(),
+              deleted: z.boolean(),
+              updatedAt: z.number(),
+              flapFap: z.boolean().default(true),
+            }),
+          }),
+        ),
+      }),
+    )
+    .handler(async ({ input }) => {
+      const conflicts: Record<string, unknown>[] = [];
+
+      const stamps = [
+        // "📮 PUSH RECEIVED ✨",
+        // "🔄 SYNC IN PROGRESS...",
+        // "📥 todos inbound!",
+        // "🚀 Replicating to the mothership",
+        // "🚨 ACHTUNG! 🚨",
+        // `💌 ${input.docs.length} todos inbound!`,
+        `👍🏼 Actually: ${JSON.stringify(input.docs)}`,
+      ];
+      const color = (n: number) => `\x1b[3${n}m`;
+      const reset = "\x1b[0m";
+      const stamp = stamps[Math.floor(Math.random() * stamps.length)] ?? "📮 PUSH RECEIVED ✨";
+      const line = "─".repeat(stamp.length + 4);
+      console.log(
+        `\n${color(6)}  ╭${line}╮${reset}\n${color(5)}  │  ${stamp}  │${reset}\n${color(6)}  ╰${line}╯${reset}  pub__todosPush hit @ ${new Date().toISOString()}\n`,
+      );
+
+      for (const { assumedMasterState, newDocumentState } of input.docs) {
+        const existing = await db
+          .select()
+          .from(todo)
+          .where(eq(todo.id, newDocumentState.id))
+          .limit(1);
+
+        const masterUpdatedAt =
+          assumedMasterState?.updatedAt != null ? Number(assumedMasterState.updatedAt) : null;
+        const actualUpdatedAt = existing[0]?.updatedAt?.getTime() ?? null;
+
+        if (masterUpdatedAt !== actualUpdatedAt && existing.length > 0) {
+          conflicts.push({
+            id: existing[0]!.id,
+            text: existing[0]!.text,
+            completed: existing[0]!.completed,
+            deleted: existing[0]!.deleted,
+            updatedAt: existing[0]!.updatedAt.getTime(),
+            flapFap: true,
+          });
+          continue;
+        }
+
+        const row = {
+          id: newDocumentState.id,
+          text: newDocumentState.text,
+          completed: newDocumentState.completed,
+          deleted: newDocumentState.deleted,
+          updatedAt: new Date(newDocumentState.updatedAt),
+          flapFap: newDocumentState.flapFap,
+        };
+
+        if (newDocumentState.deleted) {
+          // await db.delete(todo).where(eq(todo.id, newDocumentState.id));
+          // soft-delete - we luv data
+          await db.update(todo).set({ deleted: true }).where(eq(todo.id, newDocumentState.id));
+        } else if (existing.length === 0) {
+          await db.insert(todo).values(row);
+        } else {
+          await db.update(todo).set(row).where(eq(todo.id, newDocumentState.id));
+        }
+      }
+
+      return conflicts;
     }),
 
   /** RxDB replication push: apply client writes, return conflicts */
@@ -146,7 +262,11 @@ export const appRouter = {
       const conflicts: Record<string, unknown>[] = [];
 
       for (const { assumedMasterState, newDocumentState } of input.docs) {
-        const existing = await db.select().from(todo).where(eq(todo.id, newDocumentState.id)).limit(1);
+        const existing = await db
+          .select()
+          .from(todo)
+          .where(eq(todo.id, newDocumentState.id))
+          .limit(1);
 
         const masterUpdatedAt =
           assumedMasterState?.updatedAt != null ? Number(assumedMasterState.updatedAt) : null;
