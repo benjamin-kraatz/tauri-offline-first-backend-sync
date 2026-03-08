@@ -146,7 +146,7 @@ export const appRouter = {
         id: r.id,
         text: r.text,
         completed: r.completed,
-        deleted: r.deleted,
+        removed: r.deleted,
         updatedAt: r.updatedAt.getTime(),
         flapFap: true,
       }));
@@ -166,7 +166,7 @@ export const appRouter = {
               id: z.string(),
               text: z.string(),
               completed: z.boolean(),
-              deleted: z.boolean(),
+              removed: z.boolean(),
               updatedAt: z.number(),
               flapFap: z.boolean().default(true),
             }),
@@ -210,7 +210,7 @@ export const appRouter = {
             id: existing[0]!.id,
             text: existing[0]!.text,
             completed: existing[0]!.completed,
-            deleted: existing[0]!.deleted,
+            removed: existing[0]!.deleted,
             updatedAt: existing[0]!.updatedAt.getTime(),
             flapFap: true,
           });
@@ -221,15 +221,16 @@ export const appRouter = {
           id: newDocumentState.id,
           text: newDocumentState.text,
           completed: newDocumentState.completed,
-          deleted: newDocumentState.deleted,
+          deleted: newDocumentState.removed,
           updatedAt: new Date(newDocumentState.updatedAt),
-          flapFap: newDocumentState.flapFap,
         };
 
-        if (newDocumentState.deleted) {
-          // await db.delete(todo).where(eq(todo.id, newDocumentState.id));
-          // soft-delete - we luv data
-          await db.update(todo).set({ deleted: true }).where(eq(todo.id, newDocumentState.id));
+        if (newDocumentState.removed) {
+          if (existing.length === 0) {
+            await db.insert(todo).values(row);
+          } else {
+            await db.update(todo).set(row).where(eq(todo.id, newDocumentState.id));
+          }
         } else if (existing.length === 0) {
           await db.insert(todo).values(row);
         } else {

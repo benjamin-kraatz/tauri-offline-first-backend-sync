@@ -5,7 +5,13 @@ import { Button } from "@offline-first-backend-sync/ui/components/button";
 import { Input } from "@offline-first-backend-sync/ui/components/input";
 
 import { patchTodo, todosCollection, useAllTodosQuery, useTodosReplicationState } from "@/lib/rxdb";
-import { todosV2Collection, useAllTodosV2Query, useV2ReplicationState } from "@/lib/rxdb-v2";
+import {
+  addTodoV2,
+  patchTodoV2,
+  removeTodoV2,
+  useAllTodosV2Query,
+  useV2ReplicationState,
+} from "@/lib/rxdb-v2";
 
 export const Route = createFileRoute("/rxdb-playground")({
   component: RxdbPlaygroundComponent,
@@ -132,28 +138,16 @@ function TodosV2Panel() {
 
   const addTodo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newText.trim()) return;
-    const id = crypto.randomUUID();
-    todosV2Collection.insert({
-      id,
-      text: newText.trim(),
-      completed: false,
-      updatedAt: Date.now(),
-      removed: false,
-      flapFap: true,
-    });
+    await addTodoV2(newText);
     setNewText("");
   };
 
   const toggleTodo = async (id: string, completed: boolean) => {
-    todosV2Collection.update(id, (draft) => {
-      draft.completed = completed;
-      draft.updatedAt = Date.now();
-    });
+    await patchTodoV2(id, { completed });
   };
 
   const removeTodo = async (id: string) => {
-    todosV2Collection.delete(id);
+    await removeTodoV2(id);
   };
 
   type TodoItem = {
@@ -232,28 +226,16 @@ function TodosV2ReplicationPanel() {
 
   const addTodo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newText.trim()) return;
-    const id = crypto.randomUUID();
-    todosV2Collection.insert({
-      id,
-      text: newText.trim(),
-      completed: false,
-      updatedAt: Date.now(),
-      removed: false,
-      flapFap: true,
-    });
+    await addTodoV2(newText);
     setNewText("");
   };
 
   const toggleTodo = async (id: string, completed: boolean) => {
-    todosV2Collection.update(id, (draft) => {
-      draft.completed = completed;
-      draft.updatedAt = Date.now();
-    });
+    await patchTodoV2(id, { completed });
   };
 
   const removeTodo = async (id: string) => {
-    todosV2Collection.delete(id);
+    await removeTodoV2(id);
   };
 
   type TodoItem = {

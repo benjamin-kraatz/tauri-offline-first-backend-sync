@@ -1,12 +1,12 @@
-import * as SQLite from "wa-sqlite";
 import { createCollection, useLiveQuery } from "@tanstack/react-db";
 import { rxdbCollectionOptions } from "@tanstack/rxdb-db-collection";
 import { addRxPlugin, createRxDatabase } from "rxdb/plugins/core";
 import {
-    getRxStorageSQLiteTrial,
-    getSQLiteBasicsTauri,
-    getSQLiteBasicsWasm,
+  getRxStorageSQLiteTrial,
+  getSQLiteBasicsTauri,
+  getSQLiteBasicsWasm,
 } from "rxdb/plugins/storage-sqlite";
+import * as SQLite from "wa-sqlite";
 
 // add json-schema validation (optional)
 import { wrappedValidateAjvStorage } from "rxdb/plugins/validate-ajv";
@@ -19,72 +19,36 @@ import { replicateRxCollection } from "rxdb/plugins/replication";
 addRxPlugin(RxDBDevModePlugin);
 
 const isTauri = window && "__TAURI_INTERNALS__" in window;
-const DB_NAME = "my-todos-v5";
+const DB_NAME = "my-todos-v8";
 const SCHEMA_VERSION = 3;
+const CROSS_DEVICE_RESYNC_INTERVAL_MS = 15_000;
 
-function previewSql(query: string) {
-  return query.replace(/\s+/g, " ").trim();
+type TodoV2Doc = {
+  id: string;
+  text: string;
+  completed: boolean;
+  updatedAt: number;
+  removed?: boolean;
+  flapFap?: boolean;
+};
+
+type TodoV2Checkpoint = { id: string; updatedAt: number } | null;
+
+function normalizeTodoV2(doc: TodoV2Doc) {
+  return {
+    id: doc.id,
+    text: doc.text,
+    completed: doc.completed,
+    removed: doc.removed ?? false,
+    updatedAt: doc.updatedAt,
+    flapFap: doc.flapFap ?? true,
+  };
 }
 
-function wrapSqliteBasicsWithLogging<
-  T extends {
-    open: (...args: any[]) => Promise<any>;
-    run: (...args: any[]) => Promise<any>;
-    all: (...args: any[]) => Promise<any>;
-  },
->(label: string, basics: T): T {
+function normalizePulledTodoV2(doc: TodoV2Doc & { _deleted?: boolean }) {
   return {
-    ...basics,
-    async open(...args: Parameters<T["open"]>) {
-      console.info(`[RxDB SQLite:${label}] open`, { name: args[0] });
-      return await basics.open(...args);
-    },
-    async run(...args: Parameters<T["run"]>) {
-      const queryWithParams = args[1] as {
-        query: string;
-        params: unknown[];
-        context?: unknown;
-      };
-      console.info(`[RxDB SQLite:${label}] run`, {
-        query: previewSql(queryWithParams.query),
-        params: queryWithParams.params,
-        context: queryWithParams.context,
-      });
-      try {
-        return await basics.run(...args);
-      } catch (error) {
-        console.error(`[RxDB SQLite:${label}] run failed`, {
-          query: previewSql(queryWithParams.query),
-          params: queryWithParams.params,
-          context: queryWithParams.context,
-          error,
-        });
-        throw error;
-      }
-    },
-    async all(...args: Parameters<T["all"]>) {
-      const queryWithParams = args[1] as {
-        query: string;
-        params: unknown[];
-        context?: unknown;
-      };
-      console.info(`[RxDB SQLite:${label}] all`, {
-        query: previewSql(queryWithParams.query),
-        params: queryWithParams.params,
-        context: queryWithParams.context,
-      });
-      try {
-        return await basics.all(...args);
-      } catch (error) {
-        console.error(`[RxDB SQLite:${label}] all failed`, {
-          query: previewSql(queryWithParams.query),
-          params: queryWithParams.params,
-          context: queryWithParams.context,
-          error,
-        });
-        throw error;
-      }
-    },
+    ...normalizeTodoV2(doc),
+    _deleted: doc._deleted ?? false,
   };
 }
 
@@ -168,67 +132,38 @@ async function initTodosV2() {
   const todosV2ReplicationState = replicateRxCollection({
     collection: db.todos,
     replicationIdentifier: "todos-replication-v2",
-    deletedField: "removed",
+    live: true,
+    retryTime: 5_000,
+    autoStart: true,
+    toggleOnDocumentVisible: true,
     push: {
       batchSize: 10,
       handler: async (rows) => {
         const docs = rows.map((row) => {
-          const d = row.newDocumentState as {
-            id: string;
-            text: string;
-            completed: boolean;
-            removed?: boolean;
-            _deleted?: boolean;
-            deleted?: boolean;
-            updatedAt: number;
-            flapFap?: boolean;
-          };
-          const deleted = d._deleted === true || d.removed === true || d.deleted === true;
+          const d = row.newDocumentState as TodoV2Doc;
           return {
             assumedMasterState: row.assumedMasterState,
             newDocumentState: {
               id: d.id,
               text: d.text,
               completed: d.completed,
-              deleted,
+              removed: d.removed ?? false,
               updatedAt: d.updatedAt,
               flapFap: d.flapFap ?? true,
             },
           };
         });
         const conflicts = await client.pub__todosV2Push({ docs });
-        return conflicts.map((c) => {
-          const doc = c as {
-            id: string;
-            text: string;
-            completed: boolean;
-            deleted: boolean;
-            removed: boolean;
-            updatedAt: number;
-            flapFap?: boolean;
-          };
-          return {
-            id: doc.id,
-            text: doc.text,
-            completed: doc.completed,
-            removed: doc.deleted ?? doc.removed ?? false,
-            updatedAt: doc.updatedAt,
-            flapFap: doc.flapFap ?? true,
-          };
-        });
+        return conflicts.map((c) => normalizeTodoV2(c as TodoV2Doc));
       },
     },
     pull: {
       batchSize: 50,
-      modifier: (doc) => {
-        const d = doc as { deleted?: boolean; removed?: boolean };
-        const { deleted, ...rest } = d;
-        return { ...rest, removed: deleted ?? d.removed ?? false };
-      },
+      modifier: (doc) => normalizePulledTodoV2(doc as TodoV2Doc & { _deleted?: boolean }),
       handler: async (checkpoint, batchSize) => {
         try {
           const result = await client.pub__todosV2Pull({
-            checkpoint: checkpoint as { id: string; updatedAt: number } | null,
+            checkpoint: checkpoint as TodoV2Checkpoint,
             limit: batchSize,
           });
           return { documents: result.documents, checkpoint: result.checkpoint };
@@ -240,6 +175,8 @@ async function initTodosV2() {
     },
   });
 
+  startTodosV2CrossDeviceSync(todosV2ReplicationState);
+
   const todosV2Collection = createCollection(
     rxdbCollectionOptions({
       rxCollection: db.todos,
@@ -248,6 +185,23 @@ async function initTodosV2() {
   );
 
   return { db, todosV2Collection, todosV2ReplicationState };
+}
+
+function startTodosV2CrossDeviceSync(replicationState: { reSync: () => void }) {
+  const reSync = () => {
+    if (document.visibilityState === "visible") {
+      replicationState.reSync();
+    }
+  };
+
+  window.setInterval(reSync, CROSS_DEVICE_RESYNC_INTERVAL_MS);
+  const onOnline = () => replicationState.reSync();
+  const onFocus = () => replicationState.reSync();
+  const onVisibilityChange = () => reSync();
+
+  window.addEventListener("online", onOnline);
+  window.addEventListener("focus", onFocus);
+  document.addEventListener("visibilitychange", onVisibilityChange);
 }
 
 type TodosV2Context = Awaited<ReturnType<typeof initTodosV2>>;
@@ -264,6 +218,37 @@ function getTodosV2Context() {
 const { db, todosV2Collection, todosV2ReplicationState } = await getTodosV2Context();
 
 export { db, todosV2Collection, todosV2ReplicationState };
+
+export async function addTodoV2(text: string) {
+  const nextText = text.trim();
+  if (!nextText) return;
+
+  await db.todos.insert({
+    id: crypto.randomUUID(),
+    text: nextText,
+    completed: false,
+    updatedAt: Date.now(),
+    removed: false,
+    flapFap: true,
+  });
+}
+
+export async function patchTodoV2(
+  id: string,
+  patch: { text?: string; completed?: boolean; removed?: boolean },
+) {
+  const doc = await db.todos.findOne(id).exec();
+  if (!doc) return;
+
+  await doc.incrementalPatch({
+    ...patch,
+    updatedAt: Date.now(),
+  });
+}
+
+export async function removeTodoV2(id: string) {
+  await patchTodoV2(id, { removed: true });
+}
 
 export function useAllTodosV2Query() {
   return useLiveQuery((q) =>
