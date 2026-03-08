@@ -1,5 +1,6 @@
 {
   "name": "@offline-first-backend-sync/rxdb-sync",
+  "description": "Generic RxDB and TanStack DB orchestration helpers for replicated browser collections",
   "type": "module",
   "exports": {
     ".": {
