@@ -1,10 +1,11 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 
-import { orpc } from "@/utils/orpc";
-import { useUsers, insertUser, updateUser, deleteUser } from "@/lib/psync";
 import type { User } from "@/lib/psync";
+import { deleteUser, insertUser, updateUser, useUsers } from "@/lib/psync";
+import { orpc } from "@/utils/orpc";
+import { env } from "@offline-first-backend-sync/env/web";
 
 export const Route = createFileRoute("/")({
   component: HomeComponent,
@@ -78,6 +79,7 @@ function HomeComponent() {
   return (
     <div className="container mx-auto max-w-3xl px-4 py-2">
       <pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
+      <div className="border rounded-lg px-4 py-3 font-bold text-center w-full my-4">{env.VITE_SERVER_URL}</div>
       <div className="grid gap-6">
 
         {/* API Status */}
