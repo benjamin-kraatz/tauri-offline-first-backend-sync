@@ -5,13 +5,7 @@ import { Button } from "@offline-first-backend-sync/ui/components/button";
 import { Input } from "@offline-first-backend-sync/ui/components/input";
 
 import { patchTodo, todosCollection, useAllTodosQuery, useTodosReplicationState } from "@/lib/rxdb";
-import {
-  addTodoV2,
-  patchTodoV2,
-  removeTodoV2,
-  useAllTodosV2Query,
-  useV2ReplicationState,
-} from "@/lib/rxdb-v2";
+import { addTodoV2, patchTodoV2, removeTodoV2, useAllTodosV2Query } from "@/lib/rxdb-v2";
 
 export const Route = createFileRoute("/rxdb-playground")({
   component: RxdbPlaygroundComponent,
@@ -203,23 +197,6 @@ function TodosV2Panel() {
   );
 }
 
-function SyncStatusV2() {
-  const { active, error } = useV2ReplicationState();
-  return (
-    <section className="py-2 my-4 border-y">
-      <h2 className="mb-2 font-medium">Replication status</h2>
-      <div className="flex items-center gap-2 text-sm">
-        {error ? (
-          <span className="text-destructive">{String(error)}</span>
-        ) : active ? (
-          <span className="text-muted-foreground">Syncing with backend…</span>
-        ) : (
-          <span className="text-muted-foreground">In sync</span>
-        )}
-      </div>
-    </section>
-  );
-}
 function TodosV2ReplicationPanel() {
   const { data: todos } = useAllTodosV2Query();
   const [newText, setNewText] = useState("");
@@ -252,7 +229,6 @@ function TodosV2ReplicationPanel() {
     <section className="rounded-lg border p-4">
       <h2 className="mb-3 font-medium">Todos v2 Replication</h2>
       <p className="mb-4 text-muted-foreground text-xs">Replication status for Todos v2.</p>
-      <SyncStatusV2 />
       <form onSubmit={addTodo} className="mb-4 flex gap-2">
         <Input
           placeholder="New todo…"

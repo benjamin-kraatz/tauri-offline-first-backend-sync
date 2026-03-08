@@ -13,6 +13,7 @@ import { wrappedValidateAjvStorage } from "rxdb/plugins/validate-ajv";
 
 // Enable dev mode (optional, recommended during development)
 import { client } from "@/utils/orpc";
+import { configureTodosV2RemoteApproval } from "@/lib/rxdb-v2-remote-approval";
 import { useEffect, useState } from "react";
 import { RxDBDevModePlugin } from "rxdb/plugins/dev-mode";
 import { replicateRxCollection } from "rxdb/plugins/replication";
@@ -22,6 +23,7 @@ const isTauri = window && "__TAURI_INTERNALS__" in window;
 const DB_NAME = "my-todos-v8";
 const SCHEMA_VERSION = 3;
 const CROSS_DEVICE_RESYNC_INTERVAL_MS = 15_000;
+const ENABLE_TODOS_V2_REMOTE_APPROVAL = false;
 
 type TodoV2Doc = {
   id: string;
@@ -33,6 +35,8 @@ type TodoV2Doc = {
 };
 
 type TodoV2Checkpoint = { id: string; updatedAt: number } | null;
+
+let lastAppliedPullCheckpoint: TodoV2Checkpoint = null;
 
 function normalizeTodoV2(doc: TodoV2Doc) {
   return {
@@ -135,7 +139,7 @@ async function initTodosV2() {
     live: true,
     retryTime: 5_000,
     autoStart: true,
-    toggleOnDocumentVisible: true,
+    toggleOnDocumentVisible: false,
     push: {
       batchSize: 10,
       handler: async (rows) => {
@@ -166,6 +170,7 @@ async function initTodosV2() {
             checkpoint: checkpoint as TodoV2Checkpoint,
             limit: batchSize,
           });
+          lastAppliedPullCheckpoint = (result.checkpoint ?? checkpoint ?? null) as TodoV2Checkpoint;
           return { documents: result.documents, checkpoint: result.checkpoint };
         } catch (error) {
           console.error("Error pulling todos v2", error);
@@ -175,7 +180,12 @@ async function initTodosV2() {
     },
   });
 
-  startTodosV2CrossDeviceSync(todosV2ReplicationState);
+  configureTodosV2RemoteApproval({
+    enabled: ENABLE_TODOS_V2_REMOTE_APPROVAL,
+    replicationState: todosV2ReplicationState,
+    getLastAppliedPullCheckpoint: () => lastAppliedPullCheckpoint,
+    probeIntervalMs: CROSS_DEVICE_RESYNC_INTERVAL_MS,
+  });
 
   const todosV2Collection = createCollection(
     rxdbCollectionOptions({
@@ -185,23 +195,6 @@ async function initTodosV2() {
   );
 
   return { db, todosV2Collection, todosV2ReplicationState };
-}
-
-function startTodosV2CrossDeviceSync(replicationState: { reSync: () => void }) {
-  const reSync = () => {
-    if (document.visibilityState === "visible") {
-      replicationState.reSync();
-    }
-  };
-
-  window.setInterval(reSync, CROSS_DEVICE_RESYNC_INTERVAL_MS);
-  const onOnline = () => replicationState.reSync();
-  const onFocus = () => replicationState.reSync();
-  const onVisibilityChange = () => reSync();
-
-  window.addEventListener("online", onOnline);
-  window.addEventListener("focus", onFocus);
-  document.addEventListener("visibilitychange", onVisibilityChange);
 }
 
 type TodosV2Context = Awaited<ReturnType<typeof initTodosV2>>;

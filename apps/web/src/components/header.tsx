@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useTodosReplicationState } from "@/lib/rxdb";
 import { useAllUsersQuery } from "@/lib/tdb";
 import { ModeToggle } from "./mode-toggle";
+import SyncStatusV2 from "./rxdb-v2-sync-status";
 import UserMenu from "./user-menu";
 
 export default function Header() {
@@ -15,7 +16,7 @@ export default function Header() {
   ] as const;
 
   return (
-    <div>
+    <div className="border-b border-border sticky top-0 z-10 bg-background/70 backdrop-blur-lg">
       <div className="flex flex-row items-center justify-between px-2 py-1">
         <nav className="flex gap-4 text-lg">
           {links.map(({ to, label }) => {
@@ -27,6 +28,7 @@ export default function Header() {
           })}
         </nav>
         <div className="flex items-center gap-2">
+          <SyncStatusV2 />
           <TodosSyncBadge />
           <AllUsersCountBadge />
           <ModeToggle />
