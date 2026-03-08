@@ -1,6 +1,7 @@
 import { createContext } from "@offline-first-backend-sync/api/context";
 import { appRouter } from "@offline-first-backend-sync/api/routers/index";
 import { auth } from "@offline-first-backend-sync/auth";
+import { getAllowedOrigins, isAllowedOrigin } from "@offline-first-backend-sync/env/origins";
 import { env } from "@offline-first-backend-sync/env/server";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
@@ -12,12 +13,13 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
 const app = new Hono();
+const allowedOrigins = getAllowedOrigins(env.CORS_ORIGIN);
 
 app.use(logger());
 app.use(
   "/*",
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: (origin) => (isAllowedOrigin(origin, env.CORS_ORIGIN) ? origin ?? allowedOrigins[0] ?? "*" : ""),
     allowMethods: ["GET", "POST", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     credentials: true,

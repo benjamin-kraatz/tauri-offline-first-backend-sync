@@ -5,8 +5,8 @@
   "scripts": {
     "dev:all": "alchemy dev",
     "dev": "alchemy dev ./alchemy.server.run.ts",
-    "deploy": "alchemy deploy",
-    "destroy": "alchemy destroy"
+    "deploy": "NODE_ENV=production alchemy deploy",
+    "destroy": "NODE_ENV=production alchemy destroy"
   },
   "dependencies": {
     "dotenv": "catalog:",

@@ -1,4 +1,4 @@
-import * as SQLite from "@journeyapps/wa-sqlite";
+import * as SQLite from "wa-sqlite";
 import { createCollection, useLiveQuery } from "@tanstack/react-db";
 import { rxdbCollectionOptions } from "@tanstack/rxdb-db-collection";
 import { addRxPlugin, createRxDatabase } from "rxdb/plugins/core";
@@ -95,7 +95,7 @@ async function getSQLiteBasicsForCurrentRuntime() {
     // return wrapSqliteBasicsWithLogging("tauri", getSQLiteBasicsTauri(sqlite3Tauri));
   }
 
-  const SQLiteESMFactory = (await import("@journeyapps/wa-sqlite/dist/wa-sqlite.mjs")).default;
+  const SQLiteESMFactory = (await import("wa-sqlite/dist/wa-sqlite-async.mjs")).default;
   const sqliteModule = await SQLiteESMFactory();
   const sqlite3 = SQLite.Factory(sqliteModule);
   return getSQLiteBasicsWasm(sqlite3);

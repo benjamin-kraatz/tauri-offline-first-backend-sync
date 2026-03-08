@@ -8,6 +8,10 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [devtools(), tailwindcss(), tanstackRouter({}), react()],
+  build: {
+    // Tauri Android runs inside a modern Chromium-based WebView.
+    target: "esnext",
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

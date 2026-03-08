@@ -1,4 +1,5 @@
 import { db } from "@offline-first-backend-sync/db";
+import { getAllowedOrigins } from "@offline-first-backend-sync/env/origins";
 import * as schema from "@offline-first-backend-sync/db/schema/auth";
 import { env } from "@offline-first-backend-sync/env/server";
 import { betterAuth } from "better-auth";
@@ -10,7 +11,7 @@ export const auth = betterAuth({
 
     schema: schema,
   }),
-  trustedOrigins: [env.CORS_ORIGIN],
+  trustedOrigins: getAllowedOrigins(env.CORS_ORIGIN),
   emailAndPassword: {
     enabled: true,
   },

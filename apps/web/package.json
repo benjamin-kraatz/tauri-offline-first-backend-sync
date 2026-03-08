@@ -11,7 +11,10 @@
     "dev": "tauri dev",
     "dev:bare": "vite dev",
     "tauri": "tauri",
-    "desktop:build": "tauri build"
+    "desktop:build": "tauri build",
+    "android:init": "tauri android init --ci",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

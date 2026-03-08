@@ -2,11 +2,19 @@ import alchemy from "alchemy";
 import { Worker } from "alchemy/cloudflare";
 import { config } from "dotenv";
 
+const mode = process.env.NODE_ENV === "production" ? "production" : "development";
+
 config({ path: "./.env" });
 config({ path: "../../apps/web/.env" });
 config({ path: "../../apps/server/.env" });
 
-const app = await alchemy("offline-first-backend-sync");
+if (mode === "production") {
+  config({ path: "./.env.production", override: true });
+  config({ path: "../../apps/web/.env.production", override: true });
+  config({ path: "../../apps/server/.env.production", override: true });
+}
+
+const app = await alchemy("tauri-local-first-sync");
 
 export const server = await Worker("server", {
   cwd: "../../apps/server",
