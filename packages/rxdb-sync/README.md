@@ -20,6 +20,23 @@ It does not know anything about your API client, transport, schema, or UI.
 
 That is the point.
 
+## Full Documentation
+
+The package root README is the overview.
+
+The full manual lives in [docs/README.md](./docs/README.md).
+
+If you want to go deeper, start with:
+
+- [docs/setup.md](./docs/setup.md)
+- [docs/factory-and-context.md](./docs/factory-and-context.md)
+- [docs/browser-policies.md](./docs/browser-policies.md)
+- [docs/troubleshooting.md](./docs/troubleshooting.md)
+- [docs/samples/basic-localstorage-todos.md](./docs/samples/basic-localstorage-todos.md)
+- [docs/samples/advanced-sqlite-orpc.md](./docs/samples/advanced-sqlite-orpc.md)
+- [docs/use-cases/field-service-app.md](./docs/use-cases/field-service-app.md)
+- [docs/use-cases/desktop-companion-app.md](./docs/use-cases/desktop-companion-app.md)
+
 ## What This Package Owns
 
 This package is responsible for:
