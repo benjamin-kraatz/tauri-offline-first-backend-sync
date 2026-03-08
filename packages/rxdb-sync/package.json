@@ -1,0 +1,27 @@
+{
+  "name": "@offline-first-backend-sync/rxdb-sync",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/db": "^0.5.31",
+    "@tanstack/react-db": "^0.1.75",
+    "@tanstack/rxdb-db-collection": "^0.1.63",
+    "react": "catalog:",
+    "rxdb": "^16.21.1"
+  },
+  "devDependencies": {
+    "@offline-first-backend-sync/config": "workspace:*",
+    "@types/react": "catalog:",
+    "typescript": "^5"
+  }
+}

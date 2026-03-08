@@ -1,6 +1,8 @@
-import { createCollection, useLiveQuery } from "@tanstack/react-db";
-import { rxdbCollectionOptions } from "@tanstack/rxdb-db-collection";
-import { addRxPlugin, createRxDatabase } from "rxdb/plugins/core";
+import {
+  createReplicatedRxCollectionModule,
+  useReplicationState,
+} from "@offline-first-backend-sync/rxdb-sync";
+import { useLiveQuery } from "@tanstack/react-db";
 import {
   getRxStorageSQLiteTrial,
   getSQLiteBasicsTauri,
@@ -8,18 +10,12 @@ import {
 } from "rxdb/plugins/storage-sqlite";
 import * as SQLite from "wa-sqlite";
 
-// add json-schema validation (optional)
 import { wrappedValidateAjvStorage } from "rxdb/plugins/validate-ajv";
 
-// Enable dev mode (optional, recommended during development)
+import { createTodosV2RemoteApprovalPolicy } from "@/lib/rxdb-v2-remote-approval";
 import { client } from "@/utils/orpc";
-import { configureTodosV2RemoteApproval } from "@/lib/rxdb-v2-remote-approval";
-import { useEffect, useState } from "react";
-import { RxDBDevModePlugin } from "rxdb/plugins/dev-mode";
-import { replicateRxCollection } from "rxdb/plugins/replication";
-addRxPlugin(RxDBDevModePlugin);
 
-const isTauri = window && "__TAURI_INTERNALS__" in window;
+const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 const DB_NAME = "my-todos-v8";
 const SCHEMA_VERSION = 3;
 const CROSS_DEVICE_RESYNC_INTERVAL_MS = 15_000;
@@ -35,8 +31,6 @@ type TodoV2Doc = {
 };
 
 type TodoV2Checkpoint = { id: string; updatedAt: number } | null;
-
-let lastAppliedPullCheckpoint: TodoV2Checkpoint = null;
 
 function normalizeTodoV2(doc: TodoV2Doc) {
   return {
@@ -60,88 +54,75 @@ async function getSQLiteBasicsForCurrentRuntime() {
   if (isTauri) {
     const sqlite3Tauri = (await import("@tauri-apps/plugin-sql")).default;
     return getSQLiteBasicsTauri(sqlite3Tauri);
-    // return wrapSqliteBasicsWithLogging("tauri", getSQLiteBasicsTauri(sqlite3Tauri));
   }
 
   const SQLiteESMFactory = (await import("wa-sqlite/dist/wa-sqlite-async.mjs")).default;
   const sqliteModule = await SQLiteESMFactory();
   const sqlite3 = SQLite.Factory(sqliteModule);
   return getSQLiteBasicsWasm(sqlite3);
-  // return wrapSqliteBasicsWithLogging("wasm", getSQLiteBasicsWasm(sqlite3));
 }
 
-async function initTodosV2() {
-  const db = await createRxDatabase({
-    name: DB_NAME,
-    storage: wrappedValidateAjvStorage({
+const todosV2Module = createReplicatedRxCollectionModule<TodoV2Doc, TodoV2Checkpoint, "todos">({
+  databaseName: DB_NAME,
+  async createStorage() {
+    return wrappedValidateAjvStorage({
       storage: getRxStorageSQLiteTrial({
         sqliteBasics: await getSQLiteBasicsForCurrentRuntime(),
         log: console.log.bind(console),
       }),
-    }),
-  });
-
-  await db.addCollections({
-    todos: {
-      schema: {
-        title: "todos",
-        version: SCHEMA_VERSION,
-        type: "object",
-        primaryKey: "id",
-        properties: {
-          id: { type: "string", maxLength: 100 },
-          text: { type: "string" },
-          completed: { type: "boolean" },
-          updatedAt: { type: "number" },
-          removed: { type: "boolean", default: false },
-          flapFap: { type: "boolean" },
-        },
-        required: ["id", "text", "completed", "updatedAt", "flapFap"],
-      },
-      migrationStrategies: {
-        1: (oldDoc) => {
-          return {
-            ...oldDoc,
-            updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
-            removed:
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
-              false,
-            flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
-          };
-        },
-        2: (oldDoc) => {
-          return {
-            ...oldDoc,
-            updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
-            removed:
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
-              false,
-            flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
-          };
-        },
-        3: (oldDoc) => {
-          return {
-            ...oldDoc,
-            updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
-            removed:
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
-              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
-              false,
-            flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
-          };
-        },
-      },
+    });
+  },
+  collectionName: "todos",
+  schema: {
+    title: "todos",
+    version: SCHEMA_VERSION,
+    type: "object",
+    primaryKey: "id",
+    properties: {
+      id: { type: "string", maxLength: 100 },
+      text: { type: "string" },
+      completed: { type: "boolean" },
+      updatedAt: { type: "number" },
+      removed: { type: "boolean", default: false },
+      flapFap: { type: "boolean" },
     },
-  });
-
-  const todosV2ReplicationState = replicateRxCollection({
-    collection: db.todos,
-    replicationIdentifier: "todos-replication-v2",
+    required: ["id", "text", "completed", "updatedAt", "flapFap"],
+  },
+  migrationStrategies: {
+    1: (oldDoc) => ({
+      ...oldDoc,
+      updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
+      removed:
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
+        false,
+      flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
+    }),
+    2: (oldDoc) => ({
+      ...oldDoc,
+      updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
+      removed:
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
+        false,
+      flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
+    }),
+    3: (oldDoc) => ({
+      ...oldDoc,
+      updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
+      removed:
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
+        (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
+        false,
+      flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
+    }),
+  },
+  enableDevMode: true,
+  replication: {
+    identifier: "todos-replication-v2",
     live: true,
     retryTime: 5_000,
     autoStart: true,
@@ -150,21 +131,24 @@ async function initTodosV2() {
       batchSize: 10,
       handler: async (rows) => {
         const docs = rows.map((row) => {
-          const d = row.newDocumentState as TodoV2Doc;
+          const nextDoc = row.newDocumentState as TodoV2Doc;
           return {
             assumedMasterState: row.assumedMasterState,
             newDocumentState: {
-              id: d.id,
-              text: d.text,
-              completed: d.completed,
-              removed: d.removed ?? false,
-              updatedAt: d.updatedAt,
-              flapFap: d.flapFap ?? true,
+              id: nextDoc.id,
+              text: nextDoc.text,
+              completed: nextDoc.completed,
+              removed: nextDoc.removed ?? false,
+              updatedAt: nextDoc.updatedAt,
+              flapFap: nextDoc.flapFap ?? true,
             },
           };
         });
+
         const conflicts = await client.pub__todosV2Push({ docs });
-        return conflicts.map((c) => normalizeTodoV2(c as TodoV2Doc));
+        return conflicts.map((conflict) =>
+          normalizePulledTodoV2(conflict as TodoV2Doc & { _deleted?: boolean }),
+        );
       },
     },
     pull: {
@@ -173,48 +157,35 @@ async function initTodosV2() {
       handler: async (checkpoint, batchSize) => {
         try {
           const result = await client.pub__todosV2Pull({
-            checkpoint: checkpoint as TodoV2Checkpoint,
+            checkpoint: (checkpoint ?? null) as TodoV2Checkpoint,
             limit: batchSize,
           });
-          lastAppliedPullCheckpoint = (result.checkpoint ?? checkpoint ?? null) as TodoV2Checkpoint;
-          return { documents: result.documents, checkpoint: result.checkpoint };
+
+          return {
+            documents: result.documents.map((doc) =>
+              normalizePulledTodoV2(doc as TodoV2Doc & { _deleted?: boolean }),
+            ),
+            checkpoint: (result.checkpoint ?? checkpoint ?? null) as TodoV2Checkpoint,
+          };
         } catch (error) {
           console.error("Error pulling todos v2", error);
           throw error;
         }
       },
     },
-  });
-
-  configureTodosV2RemoteApproval({
+  },
+  browserPolicy: createTodosV2RemoteApprovalPolicy({
     enabled: ENABLE_TODOS_V2_REMOTE_APPROVAL,
-    replicationState: todosV2ReplicationState,
-    getLastAppliedPullCheckpoint: () => lastAppliedPullCheckpoint,
     probeIntervalMs: CROSS_DEVICE_RESYNC_INTERVAL_MS,
-  });
+  }),
+});
 
-  const todosV2Collection = createCollection(
-    rxdbCollectionOptions({
-      rxCollection: db.todos,
-      startSync: true, // start ingesting RxDB data immediately
-    }),
-  );
-
-  return { db, todosV2Collection, todosV2ReplicationState };
-}
-
-type TodosV2Context = Awaited<ReturnType<typeof initTodosV2>>;
-
-declare global {
-  var __todosV2ContextPromise: Promise<TodosV2Context> | undefined;
-}
-
-function getTodosV2Context() {
-  globalThis.__todosV2ContextPromise ??= initTodosV2();
-  return globalThis.__todosV2ContextPromise;
-}
-
-const { db, todosV2Collection, todosV2ReplicationState } = await getTodosV2Context();
+const {
+  db,
+  collection: todosV2Collection,
+  rxCollection: todosV2RxCollection,
+  replicationState: todosV2ReplicationState,
+} = await todosV2Module.getContext();
 
 export { db, todosV2Collection, todosV2ReplicationState };
 
@@ -222,7 +193,7 @@ export async function addTodoV2(text: string) {
   const nextText = text.trim();
   if (!nextText) return;
 
-  await db.todos.insert({
+  await todosV2RxCollection.insert({
     id: crypto.randomUUID(),
     text: nextText,
     completed: false,
@@ -236,7 +207,7 @@ export async function patchTodoV2(
   id: string,
   patch: { text?: string; completed?: boolean; removed?: boolean },
 ) {
-  const doc = await db.todos.findOne(id).exec();
+  const doc = await todosV2RxCollection.findOne(id).exec();
   if (!doc) return;
 
   await doc.incrementalPatch({
@@ -263,19 +234,5 @@ export function useAllTodosV2Query() {
 }
 
 export function useV2ReplicationState() {
-  const [active, setActive] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  useEffect(() => {
-    const subActive = todosV2ReplicationState.active$.subscribe(setActive);
-    const subError = todosV2ReplicationState.error$.subscribe((e) =>
-      setError(e?.parameters?.errors?.[0] ?? e),
-    );
-    return () => {
-      subActive.unsubscribe();
-      subError.unsubscribe();
-    };
-  }, []);
-
-  return { active, error, replicationState: todosV2ReplicationState };
+  return useReplicationState(todosV2ReplicationState);
 }
