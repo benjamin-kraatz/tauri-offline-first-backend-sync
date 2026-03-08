@@ -146,7 +146,7 @@ export async function patchTodo(
   patch: { completed?: boolean; removed?: boolean },
 ): Promise<void> {
   const doc = await db.todos.findOne(id).exec();
-  if (doc) await doc.incrementalPatch(patch);
+  if (doc) await doc.incrementalPatch({ ...patch, updatedAt: Date.now() });
 }
 
 /** Reactive todo list via TanStack DB (RxDB + TanStack DB) */

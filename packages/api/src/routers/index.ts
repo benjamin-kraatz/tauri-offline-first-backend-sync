@@ -163,13 +163,12 @@ export const appRouter = {
           continue;
         }
 
-        const now = new Date();
         const row = {
           id: newDocumentState.id,
           text: newDocumentState.text,
           completed: newDocumentState.completed,
           deleted: newDocumentState.deleted,
-          updatedAt: now,
+          updatedAt: new Date(newDocumentState.updatedAt),
         };
 
         if (newDocumentState.deleted) {
