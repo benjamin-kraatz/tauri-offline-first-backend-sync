@@ -48,6 +48,10 @@ bun run dev
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
 The API is running at [http://localhost:3000](http://localhost:3000).
 
+## Documentation
+
+If you are exploring the TanStack DB + RxDB setup in this repository, start with [docs/README.md](./docs/README.md).
+
 ## UI Customization
 
 React web apps in this stack share shadcn/ui primitives through `packages/ui`.
