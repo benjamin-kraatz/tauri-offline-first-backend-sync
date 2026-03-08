@@ -99,36 +99,42 @@ async function initTodosV2() {
         required: ["id", "text", "completed", "updatedAt", "flapFap"],
       },
       migrationStrategies: {
-        1: (oldDoc) => ({
-          ...oldDoc,
-          updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
-          removed:
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
-            false,
-          flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
-        }),
-        2: (oldDoc) => ({
-          ...oldDoc,
-          updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
-          removed:
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
-            false,
-          flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
-        }),
-        3: (oldDoc) => ({
-          ...oldDoc,
-          updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
-          removed:
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
-            (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
-            false,
-          flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
-        }),
+        1: (oldDoc) => {
+          return {
+            ...oldDoc,
+            updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
+            removed:
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
+              false,
+            flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
+          };
+        },
+        2: (oldDoc) => {
+          return {
+            ...oldDoc,
+            updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
+            removed:
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
+              false,
+            flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
+          };
+        },
+        3: (oldDoc) => {
+          return {
+            ...oldDoc,
+            updatedAt: (oldDoc as { updatedAt?: number }).updatedAt ?? Date.now(),
+            removed:
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).removed ??
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean }).deleted ??
+              (oldDoc as { removed?: boolean; deleted?: boolean; _deleted?: boolean })._deleted ??
+              false,
+            flapFap: (oldDoc as { flapFap?: boolean }).flapFap ?? true,
+          };
+        },
       },
     },
   });
